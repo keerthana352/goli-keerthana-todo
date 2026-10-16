@@ -3,97 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Tasks Dashboard</title>
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+    <title>My Tasks - Dashboard</title>
+    <link rel="stylesheet" href="Style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="logo">UI</div>
-        <nav class="side-nav" aria-label="Main navigation">
-            <button class="side-link active" title="Home">⌂</button>
-            <button class="side-link" title="Analytics">▥</button>
-            <button class="side-link" title="Reports">◷</button>
-            <button class="side-link" title="Projects">▣</button>
-            <button class="side-link" title="Dark mode">☾</button>
-            <button class="side-link" title="Settings">⚙</button>
-        </nav>
-    </aside>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">UI</div>
+            <nav class="nav-menu">
+                <a href="#" class="active"><i class="fa-solid fa-house"></i></a>
+                <a href="#"><i class="fa-solid fa-chart-simple"></i></a>
+                <a href="#"><i class="fa-regular fa-clock"></i></a>
+                <a href="#"><i class="fa-regular fa-folder"></i></a>
+                <a href="#"><i class="fa-regular fa-moon"></i></a>
+                <a href="#"><i class="fa-solid fa-gear"></i></a>
+            </nav>
+        </aside>
 
-    <main class="dashboard">
-        <header class="topbar">
-            <div></div>
-            <div class="top-actions">
-                <button title="Search" id="focusSearch">⌕</button>
-                <button title="Notifications">♧</button>
-                <div class="avatar">U</div>
-            </div>
-        </header>
-
-        <section class="content">
-            <h1>My Tasks</h1>
-
-            <div class="tabs">
-                <button class="tab" data-tab="assigned">Assigned Tasks</button>
-                <button class="tab active" data-tab="accepted">Accepted Tasks</button>
-                <button class="tab" data-tab="review">Review Tasks</button>
-            </div>
-
-            <div class="toolbar">
-                <div class="filters">
-                    <input type="date" id="dateFilter" aria-label="Filter by due date">
-                    <select id="statusFilter" aria-label="Choose status">
-                        <option value="all">Choose Status</option>
-                        <option value="pending">In progress</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                    <button id="filterButton" class="filter-btn">Filter</button>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Icons -->
+            <header class="top-header">
+                <div class="header-right">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <i class="fa-regular fa-bell"></i>
+                    <img src="https://i.pravatar.cc/40" alt="Profile" class="avatar">
                 </div>
+            </header>
 
-                <button id="createButton" class="create-btn">
-                    <span>＋</span> Create New Task
+            <h1 class="page-title">My Tasks</h1>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn">Assigned Tasks</button>
+                <button class="tab-btn active">Accepted Tasks</button>
+                <button class="tab-btn">Review Tasks</button>
+            </div>
+
+            <!-- Controls and Filter Bar -->
+            <div class="controls-bar">
+                <div class="left-controls">
+                    <div class="input-box">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span>29 July 2023</span>
+                    </div>
+                    <div class="input-box select-box">
+                        <span>Choose Status</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                    <button class="btn-filter">Filter</button>
+                </div>
+                <button class="btn-create" id="createTaskBtn">
+                    <i class="fa-solid fa-plus"></i> Create New Task
                 </button>
             </div>
 
-            <section id="taskFormPanel" class="form-panel hidden">
-                <h2 id="formHeading">Create New Task</h2>
-                <form id="taskForm">
-                    <label for="taskTitle">Title</label>
-                    <input id="taskTitle" type="text"
-                           placeholder="Enter task title" required>
-
-                    <div class="form-grid">
-                        <div>
-                            <label for="priority">Priority</label>
-                            <select id="priority">
-                                <option value="Low">Low</option>
-                                <option value="Medium" selected>Medium</option>
-                                <option value="High">High</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="dueDate">Due Date</label>
-                            <input id="dueDate" type="date">
-                        </div>
-                    </div>
-
-                    <div class="form-buttons">
-                        <button type="submit" id="submitButton" class="filter-btn">
-                            Save Task
-                        </button>
-                        <button type="button" id="cancelButton" class="cancel-btn">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <input id="searchInput" class="search-input"
-                   type="search" placeholder="Search tasks..." aria-label="Search tasks">
-
-            <p id="message" role="status"></p>
-
-            <div class="table-wrap">
+            <!-- Data Table -->
+            <div class="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -106,28 +74,30 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="taskTableBody"></tbody>
+                    <tbody id="taskTableBody">
+                        <!-- Dynamic rows via JavaScript -->
+                    </tbody>
                 </table>
             </div>
 
-            <div id="emptyState" class="empty-state hidden">
-                No tasks found. Click "Create New Task" to add one.
-            </div>
-
-            <footer class="pagination">
-                <label for="pageSize">Rows per page:</label>
-                <select id="pageSize">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                </select>
-                <span id="pageInfo">0-0 of 0</span>
-                <button id="prevPage" aria-label="Previous page">‹</button>
-                <button id="nextPage" aria-label="Next page">›</button>
+            <!-- Pagination Footer -->
+            <footer class="pagination-footer">
+                <div class="rows-per-page">
+                    Rows per page:
+                    <select>
+                        <option>10</option>
+                        <option>20</option>
+                    </select>
+                </div>
+                <div class="page-info">1-50 of 100</div>
+                <div class="page-nav">
+                    <button><i class="fa-solid fa-chevron-left"></i></button>
+                    <button><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
             </footer>
-        </section>
-    </main>
+        </main>
+    </div>
 
-    <script src="{{ url_for('static', filename='Script.js') }}"></script>
+    <script src="Script.js"></script>
 </body>
 </html>

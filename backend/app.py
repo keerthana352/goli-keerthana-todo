@@ -1,146 +1,74 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 import sqlite3
-from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-FRONTEND_DIR = BASE_DIR.parent / "Frontend"
-DB_PATH = BASE_DIR / "tasks.db"
+app = Flask(__name__)
+CORS(app)
 
-app = Flask(
-    __name__,
-    template_folder=str(FRONTEND_DIR),
-    static_folder=str(FRONTEND_DIR),
-    static_url_path="/static"
-)
-
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
+def get_db_connection():
+    conn = sqlite3.connect('tasks.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-
 def init_db():
-    with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                priority TEXT NOT NULL DEFAULT 'Medium',
-                due_date TEXT DEFAULT '',
-                completed INTEGER NOT NULL DEFAULT 0
-            )
-        """)
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            priority TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            date_assigned TEXT NOT NULL,
+            due_date TEXT NOT NULL
+        )
+    ''')
+    
+    # Initial dummy data setup
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM tasks')
+    if cursor.fetchone()[0] == 0:
+        sample_tasks = [
+            ("New test task title", "High", "In progress", "Maia", "29/07/2023", "28/04/2023"),
+            ("New test task title", "High", "Completed", "Maia Burjanadze", "23/09/2023", "24/07/2023"),
+            ("New test task title", "High", "In progress", "Maia", "29/07/2023", "28/04/2023"),
+            ("New test task title", "High", "In progress", "Maia", "29/07/2023", "28/04/2023")
+        ]
+        cursor.executemany('''
+            INSERT INTO tasks (title, priority, status, created_by, date_assigned, due_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', sample_tasks)
+        conn.commit()
+    conn.close()
 
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/api/tasks", methods=["GET"])
+@app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM tasks ORDER BY id DESC"
-        ).fetchall()
-    return jsonify([dict(row) for row in rows])
+    conn = get_db_connection()
+    tasks = conn.execute('SELECT * FROM tasks').fetchall()
+    conn.close()
+    return jsonify([dict(task) for task in tasks])
 
-
-@app.route("/api/tasks", methods=["POST"])
+@app.route('/api/tasks', methods=['POST'])
 def add_task():
-    data = request.get_json(silent=True) or {}
-    title = str(data.get("title", "")).strip()
-    priority = data.get("priority", "Medium")
-    due_date = data.get("due_date", "")
+    data = request.json
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO tasks (title, priority, status, created_by, date_assigned, due_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (
+        data.get('title', 'New test task title'),
+        data.get('priority', 'High'),
+        data.get('status', 'In progress'),
+        data.get('created_by', 'Maia'),
+        data.get('date_assigned', '29/07/2023'),
+        data.get('due_date', '28/04/2023')
+    ))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return jsonify({"id": new_id, "message": "Task created successfully"}), 201
 
-    if not title:
-        return jsonify({"error": "Task title is required"}), 400
-
-    if priority not in ["Low", "Medium", "High"]:
-        priority = "Medium"
-
-    with get_db() as conn:
-        cursor = conn.execute(
-            "INSERT INTO tasks (title, priority, due_date) VALUES (?, ?, ?)",
-            (title, priority, due_date)
-        )
-        row = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (cursor.lastrowid,)
-        ).fetchone()
-
-    return jsonify(dict(row)), 201
-
-
-@app.route("/api/tasks/<int:task_id>", methods=["PUT"])
-def update_task(task_id):
-    data = request.get_json(silent=True) or {}
-    title = str(data.get("title", "")).strip()
-    priority = data.get("priority", "Medium")
-    due_date = data.get("due_date", "")
-
-    if not title:
-        return jsonify({"error": "Task title is required"}), 400
-
-    if priority not in ["Low", "Medium", "High"]:
-        priority = "Medium"
-
-    with get_db() as conn:
-        cursor = conn.execute(
-            """UPDATE tasks
-               SET title = ?, priority = ?, due_date = ?
-               WHERE id = ?""",
-            (title, priority, due_date, task_id)
-        )
-        if cursor.rowcount == 0:
-            return jsonify({"error": "Task not found"}), 404
-
-        row = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
-        ).fetchone()
-
-    return jsonify(dict(row))
-
-
-@app.route("/api/tasks/<int:task_id>", methods=["PATCH"])
-def patch_task(task_id):
-    data = request.get_json(silent=True) or {}
-
-    with get_db() as conn:
-        row = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
-        ).fetchone()
-
-        if row is None:
-            return jsonify({"error": "Task not found"}), 404
-
-        completed = data.get("completed", bool(row["completed"]))
-        if not isinstance(completed, bool):
-            return jsonify({"error": "Invalid completed value"}), 400
-
-        conn.execute(
-            "UPDATE tasks SET completed = ? WHERE id = ?",
-            (int(completed), task_id)
-        )
-        updated = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
-        ).fetchone()
-
-    return jsonify(dict(updated))
-
-
-@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
-def delete_task(task_id):
-    with get_db() as conn:
-        cursor = conn.execute(
-            "DELETE FROM tasks WHERE id = ?", (task_id,)
-        )
-        if cursor.rowcount == 0:
-            return jsonify({"error": "Task not found"}), 404
-
-    return jsonify({"message": "Task deleted"})
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     init_db()
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
